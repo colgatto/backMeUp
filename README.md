@@ -19,6 +19,7 @@ module.exports = {
 	verbose: false,
 
 	// Backup directory path
+	// If you run "npm installService" make sure user "backmeup" has read and write access to this directory
 	backup_dir: path.join(__dirname, 'backup'),
 
 	// Every type of backup must be defined inside this object
