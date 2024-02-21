@@ -1,14 +1,3 @@
-# BakeMeUp
-
-A tool to backup data from multiple remote servers using a simple config file, no setup on servers required.
-
-It can dump SQL database, run generic command and save output and clone file.
-
-All data are stored on tar.gz file on the local machine.
-
-## Config.js Template
-
-```js
 const path = require('path');
 // Include private.js with all authentications (see private template)
 const private = require('./private');
@@ -119,53 +108,3 @@ module.exports = {
 		}
 	}
 };
-```
-
-## Private.js Template
-
-```js
-const { readFileSync } = require('fs'); // Used only for ssh privateKey
-
-module.exports = {
-
-	// Save all auth for same host inside same object
-	// Optional, just for better organization
-	my_remote_machine: {
-
-		// SSH auth, used in all backup type
-		ssh: {
-
-			// Optional.
-			// SSH Private key file, required if password is not set
-			privateKey: readFileSync('/path/to/my/key'),
-
-			// Required.
-			// Hostname or IP of the remote host
-			host: '10.10.10.10',
-
-			// Required.
-			// SSH username
-			username: 'gramatik',
-
-			// Optional.
-			// SSH password, required if privateKey is not set
-			password: 'passwordBetterThanThis'
-		},
-
-		// MySQL authentication, used for "sql" backup type
-		mysql: {
-
-			// Required.
-			// MySQL username
-			username: 'gramatik',
-
-			// Required.
-			// MySQL password
-			password: 'passwordBetterThanThis'
-		},
-
-		// Sudo password, used in "sudo" key if you need sudo privileges
-		sudo: 'passwordBetterThanThis'
-	}
-};
-```
