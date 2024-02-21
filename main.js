@@ -179,12 +179,6 @@ const run = (name) => {
 
 //#region CODE
 
-/**
-run('skill_sql');
-run('test_file');
-run('test_exec');
-/**/
-
 setupDir(config.backup_dir);
 
 const backups = Object.keys(config.backups);
