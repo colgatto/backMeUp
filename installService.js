@@ -17,7 +17,12 @@ const enableService = () => {
 	execSync('systemctl enable backMeUp', {stdio: 'inherit'});
 };
 
-const userExist = execSync('id backmeup').toString().indexOf('no such user') == -1;
+let userExist = true;
+try{
+	execSync('id backmeup');
+}catch(e){
+	userExist = false;
+}
 
 if(userExist){
 	console.log('user "backmeup" already exist, skip creation');

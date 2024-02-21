@@ -9,7 +9,7 @@
 	},
 	"scripts": {
 		"start": "node main",
-		"installService": "node installService"
+		"installService": "sudo node installService"
 	},
 	"author": "Colgatto <colgatto@protonmail.com> (https://github.com/colgatto)",
 	"license": "RWTFPL"
