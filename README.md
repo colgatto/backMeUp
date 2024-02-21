@@ -65,7 +65,12 @@ module.exports = {
 
 			// Required.
 			// When scheduled backup, based on crontab string
-			cron: '*/3 * * * *'
+			cron: '*/3 * * * *',
+
+			// Optional.
+			// Backup retention limit in days
+			// If it is omitted is illimited
+			retentionDays: 90
 		},
 
 		// File backup example
@@ -90,7 +95,12 @@ module.exports = {
 
 			// Required.
 			// When scheduled backup, based on crontab string
-			cron: '*/3 * * * *'
+			cron: '*/3 * * * *',
+
+			// Optional.
+			// Backup retention limit in days
+			// If it is omitted is illimited
+			retentionDays: 90
 		},
 
 		// Exec backup example
@@ -115,7 +125,12 @@ module.exports = {
 			
 			// Required.
 			// When scheduled backup, based on crontab string
-			cron: '40 * * * *'
+			cron: '40 * * * *',
+
+			// Optional.
+			// Backup retention limit in days
+			// If it is omitted is illimited
+			retentionDays: 90
 		}
 	}
 };

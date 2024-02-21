@@ -67,6 +67,23 @@ const get = (conn, name, filename, tarDefName = null) => new Promise(async (reso
 	});
 });
 
+const deleteOlder = (name) => {
+	
+	const conf = config.backups[name];
+	if(!conf.retentionDays) return;
+	if(typeof conf.retentionDays != 'number' || conf.retentionDays < 0) throw new Error('retentionDays must be positive number');
+	const dirPath = path.join(config.backup_dir, name);
+
+	const files = fs.readdirSync(dirPath);
+	for (let i = 0; i < files.length; i++) {
+		const file = files[i];
+		const filepath = path.join(dirPath, file);
+		if (fs.statSync(filepath).ctime < Date.now() - conf.retentionDays * 24 * 60 * 60 * 1000) fs.unlinkSync(filepath);
+	}
+
+};
+
+
 //#endregion
 
 //#region MAIN TYPE
@@ -166,6 +183,8 @@ const run = (name) => {
 			default:
 				throw new Error(`Can't find type for ${name} config.js`);
 		}
+		
+		deleteOlder(name);
 
 		conn.end();
 		
