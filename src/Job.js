@@ -17,8 +17,15 @@ class Job{
 		this.host = this.conf.host;
 		this.type = this.conf.type;
 		this.cron = this.conf.cron;
+		this.localDir = this.#setUpDir();
 
 		this.#validateConf();
+	}
+
+	#setUpDir(){
+		const dirPath = path.join(config.backup_dir, this.name);
+		utils.setupDir(dirPath);
+		return dirPath;
 	}
 
 	#validateConf(){
@@ -45,7 +52,7 @@ class Job{
 
 		this.conn.on('ready', async () => {
 
-			await this.#exec('mkdir -p /tmp/backMeUp');
+			await this.#exec(`mkdir -p "${config.tmp_dir}"`);
 
 			switch (this.type) {
 				case 'sql':
@@ -81,7 +88,11 @@ class Job{
 				stream.on('close', (code, signal) => {
 					std.code = code;
 					std.signal = signal;
-					resolve(std);
+					if(std.code === 0){
+						resolve(std);
+					}else{
+						reject(std);
+					}
 				}).on('data', (data) => {
 					std.out += data;
 				}).stderr.on('data', (data) => {
@@ -92,7 +103,9 @@ class Job{
 	}
 
 	async #sqldump(){
+
 		const filename = `${this.name}_${utils.timestr()}.sql`;
+		const filepath = path.posix.join(config.tmp_dir, filename);
 
 		let ignore = [];
 		if(this.conf.ignore){
@@ -100,7 +113,7 @@ class Job{
 		}
 		ignore = ignore.map(v => `--ignore-table=${v}`).join(' ');
 
-		let command = `mysqldump ${this.conf.database} -u ${this.conf.auth.username} -p'${this.conf.auth.password}'${this.conf.skipTriggers?' --skip-triggers': ''} ${ignore} > "/tmp/backMeUp/${filename}"`;
+		let command = `mysqldump ${this.conf.database} -u ${this.conf.auth.username} -p'${this.conf.auth.password}'${this.conf.skipTriggers?' --skip-triggers': ''} ${ignore} > "${filepath}"`;
 		if(typeof this.conf.sudo != 'undefined'){
 			command = `echo "${this.conf.sudo}" | sudo -S ${command}`;
 		}
@@ -110,18 +123,22 @@ class Job{
 	}
 
 	async #execToFile(){
-		const filename = `${this.name}_${utils.timestr()}.log`;
 
+		const filename = `${this.name}_${utils.timestr()}.log`;
+		const filepath = path.posix.join(config.tmp_dir, filename);
+		
 		const command = typeof this.conf.sudo == 'undefined' ? this.conf.command : `echo "${this.conf.sudo}" | sudo -S ${this.conf.command}`;
 
-		await this.#exec(`${command} > "/tmp/backMeUp/${filename}"`);
+		await this.#exec(`${command} > "${filepath}"`);
 		await this.#get(filename);
 	}
 
 	async #fileToFile(){
-		const filename = path.basename(this.conf.path);
-		
-		const command = `cp "${this.conf.path}" "/tmp/backMeUp/${filename}"`;
+
+		const filename = path.posix.basename(this.conf.path);
+		const filepath = path.posix.join(config.tmp_dir, filename);
+
+		const command = `cp "${this.conf.path}" "${filepath}"`;
 
 		await this.#exec(typeof this.conf.sudo == 'undefined' ? command : `echo "${this.conf.sudo}" | sudo -S ${command}`);
 		await this.#get(filename, `${this.name}_${utils.timestr()}.tar.gz`);
@@ -131,19 +148,22 @@ class Job{
 		return new Promise(async (resolve, reject) => {
 
 			const tarName = tarDefName === null ? `${filename}.tar.gz` : tarDefName;
-			if(this.conf.sudo) await this.#exec(`echo "${this.conf.sudo}" | sudo -S chmod 666 "/tmp/backMeUp/${filename}"`);
-			await this.#exec(`cd /tmp/backMeUp && tar -zcf "${tarName}" "${filename}"`);
-			await this.#exec(`rm "/tmp/backMeUp/${filename}"`);
-			const std = await this.#exec(`md5sum "/tmp/backMeUp/${tarName}"`);
+			const filepath = path.posix.join(config.tmp_dir, filename);
+			const tarPath = path.posix.join(config.tmp_dir, tarName);
+
+			if(this.conf.sudo) await this.#exec(`echo "${this.conf.sudo}" | sudo -S chmod 666 "${filepath}"`);
+			await this.#exec(`cd "${config.tmp_dir}" && tar -zcf "${tarName}" "${filename}"`);
+			await this.#exec(`rm "${filepath}"`);
+			const std = await this.#exec(`md5sum "${tarPath}"`);
 			const remoteMd5 = std.out.split(' ')[0];
 			if(!remoteMd5.match(/^[a-f0-9]{32}$/)) return reject('Invalid MD5');
 			this.conn.sftp((err, sftp) => {
 				if (err) return reject(err);
-				const localePath = utils.makeFilePath(this.name, tarName); 
-				sftp.fastGet(`/tmp/backMeUp/${tarName}`, localePath, async (err) => {
+				const localePath = path.join(this.localDir, tarName); 
+				sftp.fastGet(`${tarPath}`, localePath, async (err) => {
 					if (err) return reject(err);
 					if(!(await utils.validateMd5(localePath, remoteMd5))) return reject('MD5 mismatch');
-					await this.#exec(`rm "/tmp/backMeUp/${tarName}"`);
+					await this.#exec(`rm "${tarPath}"`);
 					resolve();
 				});
 			});
@@ -151,15 +171,13 @@ class Job{
 		});
 	}
 
-	async #deleteOlder(){
+	#deleteOlder(){
 		if(!this.conf.retentionDays) return;
 		if(typeof this.conf.retentionDays != 'number' || this.conf.retentionDays < 0) throw new Error('retentionDays must be positive number');
-		const dirPath = path.join(config.backup_dir, this.name);
-
-		const files = fs.readdirSync(dirPath);
+		const files = fs.readdirSync(this.localDir);
 		for (let i = 0; i < files.length; i++) {
 			const file = files[i];
-			const filepath = path.join(dirPath, file);
+			const filepath = path.join(this.localDir, file);
 			if (fs.statSync(filepath).ctime < Date.now() - this.conf.retentionDays * 24 * 60 * 60 * 1000) fs.unlinkSync(filepath);
 		}
 	}

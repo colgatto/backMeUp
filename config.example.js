@@ -11,6 +11,9 @@ module.exports = {
 	// If you run "npm installService" make sure user "backmeup" has read and write access to this directory
 	backup_dir: path.join(__dirname, 'backup'),
 
+	// Working directory on remote server
+	tmp_dir: '/tmp/backMeUp',
+
 	// Every type of backup must be defined inside this object
 	// Backup are stored in <backup_dir>/<backup_name>/<backup_name>_<timestamp>.tar.gz
 	// backup_name is the key inside this object

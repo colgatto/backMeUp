@@ -1,7 +1,5 @@
 const fs = require('fs');
-const path = require('path');
 const { createHash } = require('crypto');
-const config = require('../config');
 
 const timestr = () => {
 	const now = new Date();
@@ -10,18 +8,12 @@ const timestr = () => {
 		+ `.${now.getMilliseconds().toString().padStart(3, '0')}`;
 }
 
-const setupDir = (name) => {
-	if(!fs.existsSync(name)){
-		fs.mkdirSync(name);
-	}else if(!fs.statSync(name).isDirectory()){
-		throw new Error(`[${name}] is not a directory`);
+const setupDir = (dirPath) => {
+	if(!fs.existsSync(dirPath)){
+		fs.mkdirSync(dirPath);
+	}else if(!fs.statSync(dirPath).isDirectory()){
+		throw new Error(`"${dirPath}" is not a directory`);
 	}
-};
-
-const makeFilePath = (dir, filename) => {
-	const dirPath = path.join(config.backup_dir, dir);
-	setupDir(dirPath);
-	return path.join(dirPath, filename);
 };
 
 const validateMd5 = (filepath, md5) => new Promise((resolve, reject) => {
@@ -38,6 +30,5 @@ const validateMd5 = (filepath, md5) => new Promise((resolve, reject) => {
 module.exports = {
 	timestr,
 	setupDir,
-	makeFilePath,
 	validateMd5
 }
