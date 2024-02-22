@@ -151,18 +151,28 @@ class Job{
 			const filepath = path.posix.join(config.tmp_dir, filename);
 			const tarPath = path.posix.join(config.tmp_dir, tarName);
 
+			//Fix permission
 			if(this.conf.sudo) await this.#exec(`echo "${this.conf.sudo}" | sudo -S chmod 666 "${filepath}"`);
+			//Make tar.gz
 			await this.#exec(`cd "${config.tmp_dir}" && tar -zcf "${tarName}" "${filename}"`);
+			//Check integrity
+			const integrity = await this.#exec(`tar -xOzf "${tarPath}" &> /dev/null; echo $?`);
+			if(integrity.out != '0\n') return reject('tar.gz integrity not passed');
+			//Delete original file
 			await this.#exec(`rm "${filepath}"`);
-			const std = await this.#exec(`md5sum "${tarPath}"`);
-			const remoteMd5 = std.out.split(' ')[0];
-			if(!remoteMd5.match(/^[a-f0-9]{32}$/)) return reject('Invalid MD5');
+			//Make SHA512 of tar.gz
+			const std = await this.#exec(`sha512sum "${tarPath}"`);
+			const remoteSha = std.out.split(' ')[0];
+			if(!remoteSha.match(/^[a-f0-9]{128}$/)) return reject('Invalid SHA512');
 			this.conn.sftp((err, sftp) => {
 				if (err) return reject(err);
-				const localePath = path.join(this.localDir, tarName); 
+				const localePath = path.join(this.localDir, tarName);
+				//Download tar.gz
 				sftp.fastGet(`${tarPath}`, localePath, async (err) => {
 					if (err) return reject(err);
-					if(!(await utils.validateMd5(localePath, remoteMd5))) return reject('MD5 mismatch');
+					//Validate SHA512
+					if(!(await utils.validateSHA512(localePath, remoteSha))) return reject('SHA512 mismatch');
+					//Delete remote tar.gz
 					await this.#exec(`rm "${tarPath}"`);
 					resolve();
 				});

@@ -16,19 +16,19 @@ const setupDir = (dirPath) => {
 	}
 };
 
-const validateMd5 = (filepath, md5) => new Promise((resolve, reject) => {
-	const hash = createHash('md5');		  
+const validateSHA512 = (filepath, sha) => new Promise((resolve, reject) => {
+	const hash = createHash('sha512');		  
 	const rs = fs.createReadStream(filepath);
 	rs.on('data', (data) => {
 		hash.update(data);
 	});
 	rs.on('end', () => {
-		resolve(hash.digest('hex') === md5);
+		resolve(hash.digest('hex') === sha);
 	});
 });
 
 module.exports = {
 	timestr,
 	setupDir,
-	validateMd5
+	validateSHA512
 }
